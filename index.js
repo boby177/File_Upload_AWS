@@ -1,19 +1,25 @@
+require("dotenv").config();
 const express = require("express");
 const multer = require("multer");
+const { s3Uploadv2 } = require("./s3Service");
 const uuid = require("uuid").v4;
 
 const app = express();
 
-// custom filename
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads");
-  },
-  filename: (req, file, cb) => {
-    const { originalname } = file;
-    cb(null, `${uuid()}-${originalname}`);
-  },
-});
+// Disk storage
+// const storage = multer.diskStorage({
+//   destination: (req, file, cb) => {
+//     cb(null, "uploads");
+//   },
+//   filename: (req, file, cb) => {
+//     const { originalname } = file;
+//     cb(null, `${uuid()}-${originalname}`);
+//   },
+// });
+
+// Memory storage
+const storage = multer.memoryStorage();
+
 // Filter only image files
 const fileFilter = (req, file, cb) => {
   if (file.mimetype.split("/")[0] === "image") {
@@ -60,9 +66,11 @@ const multiUpload = upload.fields([
 //   }
 // });
 
-app.post("/upload", upload.array("file"), (req, res) => {
+app.post("/upload", upload.array("file"), async (req, res) => {
   try {
-    res.json({ status: "File uploaded" });
+    const file = req.files[0];
+    const result = await s3Uploadv2(file);
+    res.status(200).json({ status: "File uploaded", result });
   } catch (error) {
     console.log(error);
   }
